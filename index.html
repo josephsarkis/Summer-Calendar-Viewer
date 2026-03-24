@@ -527,6 +527,10 @@
             document.getElementById('firefox-warning').style.display = 'block';
         }
 
+        // Detect if we came back from a redirect login by reading the URL hash
+        let urlParams = new URLSearchParams(window.location.hash.substring(1));
+        let urlToken = urlParams.get('access_token');
+
         // 1. Google API Initialization
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
@@ -537,7 +541,19 @@
                 discoveryDocs: DISCOVERY_DOCS,
             });
             gapiInited = true;
-            maybeEnableButtons();
+            
+            if (urlToken) {
+                // If we have a token from the redirect, apply it immediately
+                gapi.client.setToken({ access_token: urlToken });
+                // Clean the token out of the URL bar for security
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                authContainer.style.display = 'none';
+                document.getElementById('loading-gapi').style.display = 'none';
+                fetchCalendarsList();
+            } else {
+                maybeEnableButtons();
+            }
         }
 
         function gisLoaded() {
@@ -545,13 +561,19 @@
                 console.warn("Please replace 'YOUR_CLIENT_ID_HERE' with your actual Google Client ID.");
             }
 
+            let currentUrl = window.location.origin + window.location.pathname;
+
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: '', // dynamically handled in handleAuthClick
+                ux_mode: 'redirect',
+                redirect_uri: currentUrl
             });
+            
             gisInited = true;
-            maybeEnableButtons();
+            if (!urlToken) {
+                maybeEnableButtons();
+            }
         }
 
         function maybeEnableButtons() {
@@ -562,26 +584,8 @@
         }
 
         function handleAuthClick() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    console.error('Auth Error: ', resp);
-                    alert("Authentication failed. Check browser console.");
-                    return;
-                }
-                
-                // CRITICAL: We must pass the new token to the API client!
-                gapi.client.setToken(resp); 
-                
-                authContainer.style.display = 'none';
-                await fetchCalendarsList();
-            };
-
-            const token = gapi.client.getToken();
-            if (token === null || !token) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
+            // This will redirect the entire page to Google for auth, then bounce back!
+            tokenClient.requestAccessToken({prompt: 'consent'});
         }
 
         function handleSignoutClick() {
