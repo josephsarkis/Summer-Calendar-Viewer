@@ -94,22 +94,6 @@
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
         }
 
-        .client-id-input {
-            width: 100%;
-            padding: 0.75rem;
-            margin-top: 1.5rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .client-id-input:focus {
-            border-color: var(--primary);
-        }
-
         #checkboxes-container {
             text-align: left;
             margin: 2rem auto;
@@ -452,9 +436,7 @@
     <div class="auth-container" id="auth-container">
         <div class="auth-icon">🔒</div>
         <h3>Connect your Google Calendar</h3>
-        <p class="helper-text">This runs entirely in your browser. Paste your OAuth Client ID below to connect securely.</p>
-        
-        <input type="text" id="client-id-input" class="client-id-input" placeholder="Paste your Google OAuth Client ID here..." value="">
+        <p class="helper-text">Securely view your events from May to August in a beautiful grid layout.</p>
         
         <button id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
         <p id="loading-gapi" class="helper-text">Loading Google APIs...</p>
@@ -510,7 +492,6 @@
         const checkboxesContainer = document.getElementById('checkboxes-container');
         const controlsWrapper = document.getElementById('controls-wrapper');
         const calendarsGrid = document.getElementById('calendars-grid');
-        const clientIdInput = document.getElementById('client-id-input');
         const yearSelect = document.getElementById('year-select');
         const calendarLegend = document.getElementById('calendar-legend');
 
@@ -520,6 +501,8 @@
         const modalEventsList = document.getElementById('modal-events-list');
 
         // Constants
+        const CLIENT_ID = ' 537646330230-0o0r21rn2joil35v2spk94lvbcahulbb.apps.googleusercontent.com'; // <-- PASTE YOUR GOOGLE OAUTH CLIENT ID HERE
+
         const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
         const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
         const COLORS = ['#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4'];
@@ -536,12 +519,6 @@
         let allParsedEvents = []; 
         let loadedCalendars = [];
 
-        clientIdInput.addEventListener('input', () => {
-            if (clientIdInput.value.length > 20 && !gisInited) {
-                gisLoaded();
-            }
-        });
-
         // 1. Google API Initialization
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
@@ -556,11 +533,12 @@
         }
 
         function gisLoaded() {
-            const clientId = clientIdInput.value.trim();
-            if(!clientId) return;
+            if(CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
+                console.warn("Please replace 'YOUR_CLIENT_ID_HERE' with your actual Google Client ID.");
+            }
 
             tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
+                client_id: CLIENT_ID,
                 scope: SCOPES,
                 callback: '', // dynamically handled in handleAuthClick
             });
