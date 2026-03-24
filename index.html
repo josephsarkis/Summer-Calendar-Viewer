@@ -527,32 +527,20 @@
             document.getElementById('firefox-warning').style.display = 'block';
         }
 
-        // Detect if we came back from a redirect login by reading the URL hash
-        let urlParams = new URLSearchParams(window.location.hash.substring(1));
-        let urlToken = urlParams.get('access_token');
-
         // 1. Google API Initialization
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
         }
 
         async function initializeGapiClient() {
-            await gapi.client.init({
-                discoveryDocs: DISCOVERY_DOCS,
-            });
-            gapiInited = true;
-            
-            if (urlToken) {
-                // If we have a token from the redirect, apply it immediately
-                gapi.client.setToken({ access_token: urlToken });
-                // Clean the token out of the URL bar for security
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-                authContainer.style.display = 'none';
-                document.getElementById('loading-gapi').style.display = 'none';
-                fetchCalendarsList();
-            } else {
+            try {
+                await gapi.client.init({
+                    discoveryDocs: DISCOVERY_DOCS,
+                });
+                gapiInited = true;
                 maybeEnableButtons();
+            } catch (err) {
+                alert("GAPI Init Error: " + JSON.stringify(err));
             }
         }
 
@@ -561,18 +549,16 @@
                 console.warn("Please replace 'YOUR_CLIENT_ID_HERE' with your actual Google Client ID.");
             }
 
-            let currentUrl = window.location.origin + window.location.pathname;
-
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                ux_mode: 'redirect',
-                redirect_uri: currentUrl
-            });
-            
-            gisInited = true;
-            if (!urlToken) {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: handleTokenResponse
+                });
+                gisInited = true;
                 maybeEnableButtons();
+            } catch (err) {
+                alert("GIS Init Error: " + JSON.stringify(err));
             }
         }
 
@@ -583,9 +569,32 @@
             }
         }
 
+        async function handleTokenResponse(resp) {
+            if (resp.error !== undefined) {
+                alert("Auth Error! " + JSON.stringify(resp));
+                return;
+            }
+            
+            try {
+                gapi.client.setToken({ access_token: resp.access_token });
+                document.getElementById('auth-container').style.display = 'none';
+                await fetchCalendarsList();
+            } catch (err) {
+                alert("Post-Login Error: " + err.message);
+            }
+        }
+
         function handleAuthClick() {
-            // This will redirect the entire page to Google for auth, then bounce back!
-            tokenClient.requestAccessToken({prompt: 'consent'});
+            try {
+                const token = gapi.client.getToken();
+                if (token === null || !token) {
+                    tokenClient.requestAccessToken({prompt: 'consent'});
+                } else {
+                    tokenClient.requestAccessToken({prompt: ''});
+                }
+            } catch (e) {
+                alert("Click Error: " + e.message);
+            }
         }
 
         function handleSignoutClick() {
@@ -624,7 +633,7 @@
                 calSelectContainer.style.display = 'block';
             } catch(e) {
                 console.error(e);
-                alert("Error fetching calendars. See console.");
+                alert("Calendar Fetch Error: " + (e.message || JSON.stringify(e)));
             }
         }
 
