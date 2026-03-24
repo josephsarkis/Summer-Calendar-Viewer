@@ -438,7 +438,7 @@
         <h3>Connect your Google Calendar</h3>
         <p class="helper-text">Securely view your events from May to August in a beautiful grid layout.</p>
         
-        <button id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
+        <button type="button" id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
         <p id="loading-gapi" class="helper-text">Loading Google APIs...</p>
 
         <div id="firefox-warning" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: left; font-size: 0.9rem; line-height: 1.4;">
@@ -453,8 +453,8 @@
         <div id="checkboxes-container">
             <!-- Checkboxes injected by JS -->
         </div>
-        <button id="import-btn" class="primary-btn" onclick="importSelectedCalendars()">Import Selected Calendars</button>
-        <button class="primary-btn" style="background:#555; margin-left: 10px;" onclick="handleSignoutClick()">Sign Out</button>
+        <button type="button" id="import-btn" class="primary-btn" onclick="importSelectedCalendars()">Import Selected Calendars</button>
+        <button type="button" class="primary-btn" style="background:#555; margin-left: 10px;" onclick="handleSignoutClick()">Sign Out</button>
     </div>
 
     <!-- Step 3: Calendar Grid -->
@@ -467,7 +467,7 @@
                 <option value="2027">2027</option>
                 <option value="2028">2028</option>
             </select>
-            <button id="reselect-btn" class="primary-btn" style="margin-top:0; padding: 0.5rem 1rem;">Back to Calendars</button>
+            <button type="button" id="reselect-btn" class="primary-btn" style="margin-top:0; padding: 0.5rem 1rem;">Back to Calendars</button>
         </div>
         
         <div id="calendar-legend" class="legend-container"></div>
@@ -479,7 +479,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title" id="modal-date">Events</div>
-                <button class="close-btn" id="close-modal">&times;</button>
+                <button type="button" class="close-btn" id="close-modal">&times;</button>
             </div>
             <div id="modal-events-list"></div>
         </div>
@@ -505,7 +505,7 @@
         const modalEventsList = document.getElementById('modal-events-list');
 
         // Constants
-        const CLIENT_ID = ' 537646330230-0o0r21rn2joil35v2spk94lvbcahulbb.apps.googleusercontent.com'; // <-- PASTE YOUR GOOGLE OAUTH CLIENT ID HERE
+        const CLIENT_ID = '537646330230-0o0r21rn2joil35v2spk94lvbcahulbb.apps.googleusercontent.com'.trim(); // <-- PASTE YOUR GOOGLE OAUTH CLIENT ID HERE
 
         const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
         const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
@@ -526,6 +526,18 @@
         if (navigator.userAgent.toLowerCase().includes('firefox')) {
             document.getElementById('firefox-warning').style.display = 'block';
         }
+
+        let urlToken = null;
+        function checkUrlForToken() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            if (accessToken) {
+                urlToken = accessToken;
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+            }
+        }
+        checkUrlForToken();
 
         // 1. Google API Initialization
         function gapiLoaded() {
@@ -564,8 +576,14 @@
 
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
-                document.getElementById('auth-btn').style.display = 'inline-block';
-                document.getElementById('loading-gapi').style.display = 'none';
+                if (urlToken) {
+                    document.getElementById('loading-gapi').textContent = 'Authenticating redirect...';
+                    handleTokenResponse({ access_token: urlToken });
+                    urlToken = null;
+                } else {
+                    document.getElementById('auth-btn').style.display = 'inline-block';
+                    document.getElementById('loading-gapi').style.display = 'none';
+                }
             }
         }
 
