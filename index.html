@@ -556,15 +556,20 @@
         function handleAuthClick() {
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
-                    console.error(resp);
-                    alert("Authentication failed.");
+                    console.error('Auth Error: ', resp);
+                    alert("Authentication failed. Check browser console.");
                     return;
                 }
+                
+                // CRITICAL: We must pass the new token to the API client!
+                gapi.client.setToken(resp); 
+                
                 authContainer.style.display = 'none';
                 await fetchCalendarsList();
             };
 
-            if (gapi.client.getToken() === null) {
+            const token = gapi.client.getToken();
+            if (token === null || !token) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
             } else {
                 tokenClient.requestAccessToken({prompt: ''});
