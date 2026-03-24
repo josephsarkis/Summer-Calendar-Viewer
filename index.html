@@ -440,6 +440,10 @@
         
         <button id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
         <p id="loading-gapi" class="helper-text">Loading Google APIs...</p>
+
+        <div id="firefox-warning" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: left; font-size: 0.9rem; line-height: 1.4;">
+            <strong>Using Firefox?</strong> <br>If the login window closes but nothing happens, click the <strong>shield icon</strong> on the left side of your browser's URL address bar and switch off <strong>Enhanced Tracking Protection</strong> for this site, then try again. Google's secure login requires it to pass the keys back.
+        </div>
     </div>
 
     <!-- Step 2: Calendar Selection -->
@@ -518,6 +522,10 @@
 
         let allParsedEvents = []; 
         let loadedCalendars = [];
+
+        if (navigator.userAgent.toLowerCase().includes('firefox')) {
+            document.getElementById('firefox-warning').style.display = 'block';
+        }
 
         // 1. Google API Initialization
         function gapiLoaded() {
