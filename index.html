@@ -440,10 +440,6 @@
         
         <button type="button" id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
         <p id="loading-gapi" class="helper-text">Loading Google APIs...</p>
-
-        <div id="firefox-warning" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: left; font-size: 0.9rem; line-height: 1.4;">
-            <strong>Using Firefox?</strong> <br>If the login window closes but nothing happens, click the <strong>shield icon</strong> on the left side of your browser's URL address bar and switch off <strong>Enhanced Tracking Protection</strong> for this site, then try again. Google's secure login requires it to pass the keys back.
-        </div>
     </div>
 
     <!-- Step 2: Calendar Selection -->
@@ -522,10 +518,6 @@
 
         let allParsedEvents = []; 
         let loadedCalendars = [];
-
-        if (navigator.userAgent.toLowerCase().includes('firefox')) {
-            document.getElementById('firefox-warning').style.display = 'block';
-        }
 
         let urlToken = null;
         function checkUrlForToken() {
@@ -682,7 +674,7 @@
                 let calId = cb.value;
                 let calName = cb.dataset.name;
 
-                loadedCalendars.push({ name: calName, color: colorHEX });
+                loadedCalendars.push({ name: calName, color: colorHEX, index: colorIndex });
 
                 promises.push(
                     gapi.client.calendar.events.list({
@@ -752,12 +744,47 @@
             loadedCalendars.forEach(cal => {
                 const item = document.createElement('div');
                 item.className = 'legend-item';
+                item.style.position = 'relative';
+
+                const colorInputWrapper = document.createElement('div');
+                colorInputWrapper.style.position = 'relative';
+                colorInputWrapper.style.width = '14px';
+                colorInputWrapper.style.height = '14px';
+                colorInputWrapper.title = 'Change color';
+
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = cal.color;
+                colorInput.style.opacity = '0';
+                colorInput.style.position = 'absolute';
+                colorInput.style.top = '0';
+                colorInput.style.left = '0';
+                colorInput.style.width = '100%';
+                colorInput.style.height = '100%';
+                colorInput.style.cursor = 'pointer';
+
                 const colorDot = document.createElement('div');
                 colorDot.className = 'legend-color';
                 colorDot.style.backgroundColor = cal.color;
+                colorDot.style.pointerEvents = 'none';
+
+                colorInput.addEventListener('input', (e) => {
+                    colorDot.style.backgroundColor = e.target.value;
+                });
+
+                colorInput.addEventListener('change', (e) => {
+                    cal.color = e.target.value;
+                    COLORS[cal.index] = e.target.value;
+                    renderCalendars(parseInt(yearSelect.value));
+                });
+
+                colorInputWrapper.appendChild(colorInput);
+                colorInputWrapper.appendChild(colorDot);
+                
                 const text = document.createElement('span');
                 text.textContent = cal.name;
-                item.appendChild(colorDot);
+                
+                item.appendChild(colorInputWrapper);
                 item.appendChild(text);
                 calendarLegend.appendChild(item);
             });
