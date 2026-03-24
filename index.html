@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Calendar API Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Initial Auth / List UI */
+        .auth-container, .calendars-select-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            margin-top: 1.5rem;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .client-id-input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .client-id-input:focus {
+            border-color: var(--primary);
+        }
+
+        #checkboxes-container {
+            text-align: left;
+            margin: 2rem auto;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .cal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .cal-checkbox input {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        /* Controls */
+        .controls-wrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 2rem;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        select {
+            background: var(--surface);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            width: 100%;
+            background: rgba(30, 41, 59, 0.5);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        /* Grid Framework */
+        .calendars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .month-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .month-card:nth-child(1) { animation-delay: 0.1s; }
+        .month-card:nth-child(2) { animation-delay: 0.2s; }
+        .month-card:nth-child(3) { animation-delay: 0.3s; }
+        .month-card:nth-child(4) { animation-delay: 0.4s; }
+
+        .month-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .day-header {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            padding-bottom: 0.5rem;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            position: relative;
+            transition: all 0.2s ease;
+            cursor: default;
+        }
+
+        .day-cell.valid-day:hover {
+            background: var(--surface-hover);
+            cursor: pointer;
+        }
+
+        .day-cell.empty {
+            visibility: hidden;
+        }
+
+        .day-cell.other-month {
+            opacity: 0.35;
+        }
+
+        .day-cell.other-month:hover {
+            opacity: 0.85;
+            z-index: 3;
+        }
+
+        .day-cell.has-event {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+        }
+
+        .day-cell.has-event:hover {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 255, 255, 0.2);
+            transform: scale(1.2);
+            z-index: 2;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-main);
+            color: var(--bg-color);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: left;
+            line-height: 1.4;
+        }
+        
+        .day-cell.valid-day:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .close-btn:hover {
+            color: var(--text-main);
+        }
+
+        .event-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .month-events-container {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .month-event-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .month-event-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .month-event-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .month-event-title-text {
+            color: var(--text-main);
+            white-space: normal;
+            word-wrap: break-word;
+            flex-grow: 1;
+            line-height: 1.3;
+        }
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .event-file-source {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+            opacity: 0.8;
+        }
+        .event-time {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .no-events-msg {
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .helper-text {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Summer Calendar Viewer API</h1>
+        <p class="subtitle">Direct Google Integration for May, June, July, and August</p>
+    </header>
+
+    <!-- Step 1: Auth -->
+    <div class="auth-container" id="auth-container">
+        <div class="auth-icon">🔒</div>
+        <h3>Connect your Google Calendar</h3>
+        <p class="helper-text">This runs entirely in your browser. Paste your OAuth Client ID below to connect securely.</p>
+        
+        <input type="text" id="client-id-input" class="client-id-input" placeholder="Paste your Google OAuth Client ID here..." value="">
+        
+        <button id="auth-btn" class="primary-btn" style="display: none;" onclick="handleAuthClick()">Sign in with Google</button>
+        <p id="loading-gapi" class="helper-text">Loading Google APIs...</p>
+    </div>
+
+    <!-- Step 2: Calendar Selection -->
+    <div class="calendars-select-container" id="calendars-select-container" style="display: none;">
+        <h3>Select Calendars to Import</h3>
+        <p class="helper-text">Check the calendars you want to project onto the viewer.</p>
+        <div id="checkboxes-container">
+            <!-- Checkboxes injected by JS -->
+        </div>
+        <button id="import-btn" class="primary-btn" onclick="importSelectedCalendars()">Import Selected Calendars</button>
+        <button class="primary-btn" style="background:#555; margin-left: 10px;" onclick="handleSignoutClick()">Sign Out</button>
+    </div>
+
+    <!-- Step 3: Calendar Grid -->
+    <div class="controls-wrapper" id="controls-wrapper">
+        <div class="view-controls">
+            <label for="year-select">Year:</label>
+            <select id="year-select">
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+            <button id="reselect-btn" class="primary-btn" style="margin-top:0; padding: 0.5rem 1rem;">Back to Calendars</button>
+        </div>
+        
+        <div id="calendar-legend" class="legend-container"></div>
+    </div>
+
+    <div class="calendars-grid" id="calendars-grid"></div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-date">Events</div>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div id="modal-events-list"></div>
+        </div>
+    </div>
+
+    <!-- Google API Scripts -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+
+    <script>
+        // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const calSelectContainer = document.getElementById('calendars-select-container');
+        const checkboxesContainer = document.getElementById('checkboxes-container');
+        const controlsWrapper = document.getElementById('controls-wrapper');
+        const calendarsGrid = document.getElementById('calendars-grid');
+        const clientIdInput = document.getElementById('client-id-input');
+        const yearSelect = document.getElementById('year-select');
+        const calendarLegend = document.getElementById('calendar-legend');
+
+        const modal = document.getElementById('modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const modalDate = document.getElementById('modal-date');
+        const modalEventsList = document.getElementById('modal-events-list');
+
+        // Constants
+        const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+        const COLORS = ['#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4'];
+        
+        const TARGET_MONTHS = [4, 5, 6, 7]; // May=4, June=5, July=6, Aug=7
+        const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let authReady = false;
+
+        let allParsedEvents = []; 
+        let loadedCalendars = [];
+
+        clientIdInput.addEventListener('input', () => {
+            if (clientIdInput.value.length > 20 && !gisInited) {
+                gisLoaded();
+            }
+        });
+
+        // 1. Google API Initialization
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                discoveryDocs: DISCOVERY_DOCS,
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            const clientId = clientIdInput.value.trim();
+            if(!clientId) return;
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: SCOPES,
+                callback: '', // dynamically handled in handleAuthClick
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('auth-btn').style.display = 'inline-block';
+                document.getElementById('loading-gapi').style.display = 'none';
+            }
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    console.error(resp);
+                    alert("Authentication failed.");
+                    return;
+                }
+                authContainer.style.display = 'none';
+                await fetchCalendarsList();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                authContainer.style.display = 'block';
+                calSelectContainer.style.display = 'none';
+                controlsWrapper.style.display = 'none';
+                calendarsGrid.innerHTML = '';
+            }
+        }
+
+        // 2. Fetch Calendars
+        async function fetchCalendarsList() {
+            try {
+                const response = await gapi.client.calendar.calendarList.list();
+                const calendars = response.result.items;
+                
+                checkboxesContainer.innerHTML = '';
+                calendars.forEach((cal) => {
+                    const label = document.createElement('label');
+                    label.className = 'cal-checkbox';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = cal.id;
+                    cb.dataset.name = cal.summaryOverride || cal.summary;
+                    cb.checked = cal.primary || false; // Select primary by default
+                    
+                    label.appendChild(cb);
+                    label.appendChild(document.createTextNode(' ' + cb.dataset.name));
+                    checkboxesContainer.appendChild(label);
+                });
+
+                calSelectContainer.style.display = 'block';
+            } catch(e) {
+                console.error(e);
+                alert("Error fetching calendars. See console.");
+            }
+        }
+
+        // 3. Fetch Selected Events
+        async function importSelectedCalendars() {
+            const checkboxes = document.querySelectorAll('#checkboxes-container input:checked');
+            if (checkboxes.length === 0) {
+                alert("Please select at least one calendar.");
+                return;
+            }
+
+            const importBtn = document.getElementById('import-btn');
+            importBtn.textContent = "Importing...";
+            importBtn.disabled = true;
+
+            const year = parseInt(yearSelect.value);
+            // We need May, June, July, August. So April 1 to August 31 (or beyond)
+            const timeMin = new Date(year, 3, 1).toISOString(); // Apr 1
+            const timeMax = new Date(year, 8, 30).toISOString(); // Sept 30
+
+            allParsedEvents = [];
+            loadedCalendars = [];
+            let promises = [];
+
+            Array.from(checkboxes).forEach((cb, i) => {
+                let colorIndex = i % COLORS.length;
+                let colorHEX = COLORS[colorIndex];
+                let calId = cb.value;
+                let calName = cb.dataset.name;
+
+                loadedCalendars.push({ name: calName, color: colorHEX });
+
+                promises.push(
+                    gapi.client.calendar.events.list({
+                        'calendarId': calId,
+                        'timeMin': timeMin,
+                        'timeMax': timeMax,
+                        'showDeleted': false,
+                        'singleEvents': true,
+                        'maxResults': 2500,
+                        'orderBy': 'startTime'
+                    }).then(response => {
+                        const events = response.result.items;
+                        events.forEach(event => {
+                            // API returns standard ISO string in event.start.dateTime for timed events,
+                            // or event.start.date for all-day events.
+                            let startStr = event.start.dateTime || event.start.date;
+                            let endStr = event.end.dateTime || event.end.date;
+                            
+                            let startD = new Date(startStr);
+                            let endD = new Date(endStr);
+
+                            allParsedEvents.push({
+                                title: event.summary,
+                                start: startD,
+                                end: endD,
+                                colorIndex: colorIndex,
+                                sourceName: calName
+                            });
+                        });
+                    }).catch(err => {
+                        console.error("Error fetching", calName, err);
+                    })
+                );
+            });
+
+            await Promise.all(promises);
+
+            importBtn.textContent = "Import Selected Calendars";
+            importBtn.disabled = false;
+
+            calSelectContainer.style.display = 'none';
+            controlsWrapper.style.display = 'flex';
+            
+            updateLegend();
+            renderCalendars(year);
+        }
+
+        // Logic Controls
+        yearSelect.addEventListener('change', () => {
+            // Need to refetch if year changes, so just bounce back to selection
+            controlsWrapper.style.display = 'none';
+            calendarsGrid.innerHTML = '';
+            calSelectContainer.style.display = 'block';
+        });
+
+        document.getElementById('reselect-btn').addEventListener('click', () => {
+            controlsWrapper.style.display = 'none';
+            calendarsGrid.innerHTML = '';
+            calSelectContainer.style.display = 'block';
+        });
+
+        closeModalBtn.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+
+        function updateLegend() {
+            calendarLegend.innerHTML = '';
+            loadedCalendars.forEach(cal => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                const colorDot = document.createElement('div');
+                colorDot.className = 'legend-color';
+                colorDot.style.backgroundColor = cal.color;
+                const text = document.createElement('span');
+                text.textContent = cal.name;
+                item.appendChild(colorDot);
+                item.appendChild(text);
+                calendarLegend.appendChild(item);
+            });
+        }
+
+        function renderCalendars(year) {
+            calendarsGrid.innerHTML = '';
+
+            TARGET_MONTHS.forEach(monthIndex => {
+                const card = document.createElement('div');
+                card.className = 'month-card';
+
+                const title = document.createElement('div');
+                title.className = 'month-title';
+                title.textContent = `${MONTH_NAMES[monthIndex]}`;
+                card.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'days-grid';
+
+                DAY_NAMES.forEach(day => {
+                    const header = document.createElement('div');
+                    header.className = 'day-header';
+                    header.textContent = day;
+                    grid.appendChild(header);
+                });
+
+                const firstDay = new Date(year, monthIndex, 1).getDay();
+                const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+                const daysInPrevMonth = new Date(year, monthIndex, 0).getDate();
+
+                function createDayCell(dateObj, isOtherMonth) {
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell valid-day' + (isOtherMonth ? ' other-month' : '');
+                    cell.textContent = dateObj.getDate();
+
+                    const dayEvents = getEventsForDate(dateObj);
+                    
+                    if (dayEvents.length > 0) {
+                        cell.classList.add('has-event');
+                        
+                        const uniqueColors = [...new Set(dayEvents.map(e => e.colorIndex))];
+                        
+                        if (uniqueColors.length === 1) {
+                            cell.style.background = COLORS[uniqueColors[0]];
+                        } else {
+                            let gradientStops = [];
+                            let step = 100 / uniqueColors.length;
+                            for(let i=0; i<uniqueColors.length; i++) {
+                                let start = i * step;
+                                let end = (i+1) * step;
+                                gradientStops.push(`${COLORS[uniqueColors[i]]} ${start}% ${end}%`);
+                            }
+                            cell.style.background = `linear-gradient(135deg, ${gradientStops.join(', ')})`;
+                        }
+                        
+                        cell.style.color = '#ffffff';
+                        cell.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
+                        cell.style.fontWeight = '700';
+                        cell.style.border = 'none';
+
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'tooltip';
+                        
+                        let tooltipTextArray = [];
+                        loadedCalendars.forEach(cal => {
+                            let calEventsCount = dayEvents.filter(e => e.sourceName === cal.name).length;
+                            if(calEventsCount > 0) {
+                                tooltipTextArray.push(`<span style="color:${cal.color}">●</span> ${calEventsCount} in ${cal.name}`);
+                            }
+                        });
+                        tooltip.innerHTML = tooltipTextArray.join('<br>');
+                        cell.appendChild(tooltip);
+                    }
+
+                    cell.addEventListener('click', () => {
+                        showEventsModal(dateObj, dayEvents);
+                    });
+
+                    return cell;
+                }
+
+                // Prev month
+                for (let i = 0; i < firstDay; i++) {
+                    let prevDate = new Date(year, monthIndex - 1, daysInPrevMonth - firstDay + i + 1);
+                    grid.appendChild(createDayCell(prevDate, true));
+                }
+
+                // Current month
+                for (let day = 1; day <= daysInMonth; day++) {
+                    let dateObj = new Date(year, monthIndex, day);
+                    grid.appendChild(createDayCell(dateObj, false));
+                }
+                
+                // Next month
+                const totalCells = firstDay + daysInMonth;
+                const trailingDays = (7 - (totalCells % 7)) % 7;
+                for (let i = 1; i <= trailingDays; i++) {
+                    let nextDate = new Date(year, monthIndex + 1, i);
+                    grid.appendChild(createDayCell(nextDate, true));
+                }
+
+                card.appendChild(grid);
+
+                // Add month events list at the bottom
+                const monthEvents = allParsedEvents.filter(e => {
+                    const startMonth = e.start.getMonth();
+                    const startYear = e.start.getFullYear();
+                    return startMonth === monthIndex && startYear === year;
+                });
+                
+                if (monthEvents.length > 0) {
+                    monthEvents.sort((a, b) => a.start - b.start);
+                    const topEvents = monthEvents.slice(0, 5); // max 5
+                    
+                    const eventsContainer = document.createElement('div');
+                    eventsContainer.className = 'month-events-container';
+                    
+                    topEvents.forEach(e => {
+                        const item = document.createElement('div');
+                        item.className = 'month-event-item';
+                        
+                        const dot = document.createElement('div');
+                        dot.className = 'month-event-dot';
+                        dot.style.backgroundColor = COLORS[e.colorIndex];
+                        dot.style.boxShadow = `0 0 5px ${COLORS[e.colorIndex]}`;
+                        
+                        const textEl = document.createElement('div');
+                        textEl.className = 'month-event-title-text';
+                        textEl.textContent = e.title || '(No title)';
+                        
+                        item.appendChild(dot);
+                        item.appendChild(textEl);
+                        eventsContainer.appendChild(item);
+                    });
+                    
+                    card.appendChild(eventsContainer);
+                }
+
+                calendarsGrid.appendChild(card);
+            });
+        }
+
+        function getEventsForDate(dateObj) {
+            const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+            const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
+
+            return allParsedEvents.filter(event => {
+                const eventStart = event.start.getTime();
+                const eventEnd = event.end ? event.end.getTime() : eventStart;
+                
+                // For all-day events returned by API, eventEnd is exactly midnight of the next day.
+                // It means eventEnd >= startOfDay and eventStart < endOfDay 
+                // but let's carefully check generic overlaps.
+                return (eventStart <= endOfDay && eventEnd >= startOfDay);
+            });
+        }
+
+        function showEventsModal(dateObj, events) {
+            modalDate.textContent = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            modalEventsList.innerHTML = '';
+
+            if (events.length === 0) {
+                const msg = document.createElement('div');
+                msg.className = 'no-events-msg';
+                msg.textContent = 'No events today.';
+                modalEventsList.appendChild(msg);
+            } else {
+                events.sort((a, b) => a.start - b.start);
+
+                events.forEach(event => {
+                    const item = document.createElement('div');
+                    item.className = 'event-item';
+                    item.style.borderLeftColor = COLORS[event.colorIndex];
+
+                    const source = document.createElement('div');
+                    source.className = 'event-file-source';
+                    source.textContent = event.sourceName;
+                    source.style.color = COLORS[event.colorIndex];
+
+                    const title = document.createElement('div');
+                    title.className = 'event-title';
+                    title.textContent = event.title || '(No title)';
+
+                    const time = document.createElement('div');
+                    time.className = 'event-time';
+                    
+                    // All-day check for API output (ends at strict midnight or longer than 24h)
+                    if (event.start.getHours() === 0 && event.start.getMinutes() === 0 && (event.end.getTime() - event.start.getTime() >= 24 * 60 * 60 * 1000)) {
+                        time.textContent = 'All Day';
+                    } else {
+                        const timeStr = event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        time.textContent = timeStr;
+                    }
+
+                    item.appendChild(source);
+                    item.appendChild(title);
+                    item.appendChild(time);
+                    modalEventsList.appendChild(item);
+                });
+            }
+
+            modal.classList.add('active');
+        }
+    </script>
+</body>
+</html>
